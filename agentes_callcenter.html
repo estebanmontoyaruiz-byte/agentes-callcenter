@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agentes Call Center</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0f13; --surface: #18181f; --surface2: #22222c; --border: #2e2e3a;
+    --accent: #00e5a0; --accent2: #7b5ea7; --text: #e8e8f0; --text-muted: #6b6b80;
+    --danger: #ff4d6d; --warning: #ffd166; --radius: 10px;
+    --font-mono: 'Space Mono', monospace; --font-body: 'DM Sans', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font-body); min-height: 100vh; }
+
+  /* SYNC STATUS */
+  .sync-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted); display: inline-block; margin-right: 6px; transition: background 0.3s; }
+  .sync-dot.ok { background: var(--accent); }
+  .sync-dot.syncing { background: var(--warning); animation: pulse 1s infinite; }
+  .sync-dot.error { background: var(--danger); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .sync-label { font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); }
+
+  /* HEADER */
+  .header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 16px 40px; display: flex; align-items: center; gap: 16px; position: sticky; top: 0; z-index: 100; }
+  .header-icon { width: 38px; height: 38px; background: var(--accent); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 17px; flex-shrink: 0; }
+  .header h1 { font-family: var(--font-mono); font-size: 15px; letter-spacing: 0.05em; }
+  .header h1 span { font-size: 11px; color: var(--text-muted); margin-left: 8px; }
+  .header-right { margin-left: auto; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .agent-count { background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 4px 14px; font-size: 12px; color: var(--accent); font-family: var(--font-mono); }
+  .report-badge { background: var(--accent2); border-radius: 20px; padding: 4px 14px; font-size: 12px; color: white; font-family: var(--font-mono); cursor: pointer; transition: background 0.2s; display: none; }
+  .report-badge:hover { background: #9b7ec7; }
+  .btn-login { background: white; color: #333; border: none; border-radius: 8px; padding: 7px 16px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; font-family: var(--font-body); transition: box-shadow 0.2s; }
+  .btn-login:hover { box-shadow: 0 2px 8px rgba(255,255,255,0.2); }
+  .btn-logout { background: transparent; color: var(--text-muted); border: 1px solid var(--border); border-radius: 8px; padding: 5px 12px; font-size: 11px; cursor: pointer; font-family: var(--font-body); transition: all 0.2s; }
+  .btn-logout:hover { border-color: var(--danger); color: var(--danger); }
+
+  /* TABS */
+  .tabs { display: flex; border-bottom: 1px solid var(--border); background: var(--surface); padding: 0 40px; }
+  .tab { padding: 13px 22px; font-size: 13px; font-weight: 500; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .main { padding: 28px 40px; max-width: 1100px; margin: 0 auto; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .section-title { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.15em; color: var(--text-muted); text-transform: uppercase; margin-bottom: 14px; }
+
+  /* LOGIN SCREEN */
+  .login-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; text-align: center; gap: 20px; }
+  .login-screen h2 { font-family: var(--font-mono); font-size: 18px; color: var(--accent); }
+  .login-screen p { color: var(--text-muted); font-size: 14px; max-width: 400px; line-height: 1.6; }
+  .btn-login-big { background: white; color: #333; border: none; border-radius: 12px; padding: 14px 28px; font-size: 15px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 12px; font-family: var(--font-body); transition: all 0.2s; box-shadow: 0 4px 20px rgba(255,255,255,0.1); }
+  .btn-login-big:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(255,255,255,0.15); }
+
+  /* FORMS */
+  .add-mode-toggle { display: flex; gap: 8px; margin-bottom: 14px; }
+  .mode-btn { padding: 6px 16px; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--text-muted); font-size: 12px; cursor: pointer; font-family: var(--font-body); transition: all 0.2s; }
+  .mode-btn.active { background: var(--accent); color: #0f0f13; border-color: var(--accent); font-weight: 600; }
+  .add-form { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 24px; display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 12px; align-items: end; }
+  .field label { display: block; font-size: 11px; color: var(--text-muted); margin-bottom: 6px; letter-spacing: 0.08em; text-transform: uppercase; }
+  .field input { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 9px 13px; color: var(--text); font-family: var(--font-body); font-size: 14px; outline: none; transition: border-color 0.2s; }
+  .field input:focus { border-color: var(--accent); }
+  .field input::placeholder { color: var(--text-muted); }
+  .bulk-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 24px; }
+  .bulk-hint { font-size: 12px; color: var(--text-muted); margin-bottom: 10px; line-height: 1.8; }
+  .bulk-hint code { background: var(--surface2); padding: 2px 6px; border-radius: 4px; font-family: var(--font-mono); font-size: 11px; color: var(--accent); }
+  .bulk-grid { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: start; }
+  textarea { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 13px; color: var(--text); font-family: var(--font-body); font-size: 14px; resize: vertical; outline: none; transition: border-color 0.2s; line-height: 1.6; }
+  textarea:focus { border-color: var(--accent); }
+  textarea::placeholder { color: var(--text-muted); }
+
+  /* BUTTONS */
+  .btn { padding: 9px 18px; border-radius: 8px; border: none; cursor: pointer; font-family: var(--font-body); font-size: 13px; font-weight: 600; transition: all 0.2s; white-space: nowrap; }
+  .btn-primary { background: var(--accent); color: #0f0f13; }
+  .btn-primary:hover { background: #00ffb3; transform: translateY(-1px); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .btn-danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); padding: 6px 12px; font-size: 12px; }
+  .btn-danger:hover { background: var(--danger); color: white; }
+  .btn-edit { background: transparent; color: var(--accent2); border: 1px solid var(--accent2); padding: 6px 12px; font-size: 12px; }
+  .btn-edit:hover { background: var(--accent2); color: white; }
+  .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-add-report { background: transparent; color: var(--accent); border: 1px solid var(--accent); padding: 5px 12px; font-size: 12px; font-weight: 700; border-radius: 8px; cursor: pointer; transition: all 0.2s; font-family: var(--font-body); }
+  .btn-add-report:hover { background: var(--accent); color: #0f0f13; }
+  .btn-add-report.added { background: var(--accent); color: #0f0f13; }
+  .btn-preview { background: var(--accent2); color: white; border: none; width: 100%; margin-top: 16px; padding: 13px; font-size: 14px; border-radius: 8px; cursor: pointer; font-family: var(--font-body); font-weight: 600; transition: all 0.2s; }
+  .btn-preview:hover { background: #9b7ec7; transform: translateY(-1px); }
+
+  /* TABLE */
+  .search-bar { position: relative; margin-bottom: 14px; }
+  .search-bar input { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 9px 14px 9px 40px; color: var(--text); font-size: 14px; outline: none; transition: border-color 0.2s; }
+  .search-bar input:focus { border-color: var(--accent); }
+  .search-bar::before { content: '⌕'; position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 18px; pointer-events: none; }
+  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; }
+  thead tr { background: var(--surface2); border-bottom: 1px solid var(--border); }
+  th { padding: 11px 16px; text-align: left; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); font-weight: 600; }
+  td { padding: 11px 16px; font-size: 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: var(--surface2); }
+  .td-card { font-family: var(--font-mono); font-size: 13px; color: var(--accent); }
+  .td-actions { display: flex; gap: 8px; }
+  .no-data { text-align: center; padding: 40px; color: var(--text-muted); font-size: 14px; }
+  td input.edit-input { background: var(--surface2); border: 1px solid var(--accent); border-radius: 6px; padding: 6px 10px; color: var(--text); font-size: 14px; width: 100%; outline: none; }
+
+  /* BUSCAR */
+  .search-panel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .query-box, .results-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; }
+  .query-box h3, .results-box h3 { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.12em; color: var(--text-muted); text-transform: uppercase; margin-bottom: 12px; }
+  .query-actions { display: flex; gap: 10px; margin-top: 12px; }
+  .result-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-radius: 8px; margin-bottom: 8px; gap: 10px; }
+  .result-item.found { background: rgba(0,229,160,0.07); border: 1px solid rgba(0,229,160,0.2); }
+  .result-item.not-found { background: rgba(255,77,109,0.07); border: 1px solid rgba(255,77,109,0.2); }
+  .result-name { font-size: 14px; font-weight: 500; }
+  .result-card { font-family: var(--font-mono); font-size: 13px; color: var(--accent); }
+  .result-not-found-tag { font-size: 12px; color: var(--danger); font-family: var(--font-mono); }
+  .results-summary { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; font-family: var(--font-mono); }
+  .results-summary span { color: var(--accent); }
+  .empty-results { text-align: center; padding: 36px; color: var(--text-muted); font-size: 13px; }
+  .result-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+
+  /* BULK RESULT */
+  .bulk-result { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; margin-top: 12px; font-size: 13px; line-height: 2; }
+  .bulk-result .ok { color: var(--accent); } .bulk-result .skip { color: var(--warning); } .bulk-result .err { color: var(--danger); }
+
+  /* MODAL */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 200; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 28px; width: 90%; max-width: 640px; max-height: 80vh; overflow-y: auto; }
+  .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .modal-header h2 { font-family: var(--font-mono); font-size: 14px; letter-spacing: 0.1em; color: var(--accent); }
+  .modal-close { background: none; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer; padding: 4px 8px; border-radius: 6px; }
+  .modal-close:hover { color: var(--text); background: var(--surface2); }
+  .modal-date { font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); margin-bottom: 20px; }
+  .report-table { width: 100%; border-collapse: collapse; }
+  .report-table th { padding: 9px 12px; text-align: left; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--border); }
+  .report-table td { padding: 10px 12px; font-size: 14px; border-bottom: 1px solid var(--border); }
+  .report-table tbody tr:last-child td { border-bottom: none; }
+  .report-table .tc { font-family: var(--font-mono); font-size: 13px; color: var(--accent); }
+  .modal-footer { margin-top: 18px; display: flex; justify-content: space-between; align-items: center; padding-top: 14px; border-top: 1px solid var(--border); }
+  .modal-total { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); }
+  .modal-total span { color: var(--accent); font-size: 16px; }
+
+  /* TOAST */
+  .toast { position: fixed; bottom: 28px; right: 28px; background: var(--surface); border: 1px solid var(--accent); color: var(--accent); padding: 10px 18px; border-radius: 8px; font-size: 13px; font-family: var(--font-mono); opacity: 0; transform: translateY(10px); transition: all 0.3s; pointer-events: none; z-index: 999; }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast.warn { border-color: var(--warning); color: var(--warning); }
+  .toast.err  { border-color: var(--danger);  color: var(--danger); }
+
+  @media (max-width: 700px) { .search-panel-grid { grid-template-columns: 1fr; } .add-form { grid-template-columns: 1fr; } .bulk-grid { grid-template-columns: 1fr; } .main { padding: 20px; } .header { padding: 14px 20px; } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-icon">📋</div>
+  <div><h1>CALLCENTER DB<span>/ Gestión de Agentes</span></h1></div>
+  <div class="header-right">
+    <span class="sync-dot" id="syncDot"></span><span class="sync-label" id="syncLabel">Sin conexión</span>
+    <div class="agent-count" id="agentCount" style="display:none">0 agentes</div>
+    <div class="report-badge" id="reportBadge" onclick="openModal()">📄 Reporte: <span id="reportBadgeCount">0</span></div>
+    <button class="btn-login" id="btnLogin" onclick="signIn()">
+      <svg width="16" height="16" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.2l6.7-6.7C35.7 2.5 30.2 0 24 0 14.7 0 6.7 5.5 2.7 13.5l7.8 6C12.5 13 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8C43.8 37.3 46.5 31.4 46.5 24.5z"/><path fill="#FBBC05" d="M10.5 28.5A14.4 14.4 0 019.5 24c0-1.6.3-3.1.7-4.5l-7.8-6A23.9 23.9 0 000 24c0 3.9.9 7.5 2.7 10.7l7.8-6.2z"/><path fill="#34A853" d="M24 48c6.2 0 11.4-2 15.2-5.5l-7.5-5.8c-2 1.4-4.6 2.2-7.7 2.2-6.2 0-11.5-4.2-13.4-9.9l-7.8 6C6.7 42.5 14.7 48 24 48z"/></svg>
+      Conectar con Google
+    </button>
+    <button class="btn-logout" id="btnLogout" onclick="signOut()" style="display:none">Cerrar sesión</button>
+  </div>
+</div>
+
+<div class="tabs" id="appTabs" style="display:none">
+  <div class="tab active" onclick="switchTab('db', this)">🗃 Base de Datos</div>
+  <div class="tab" onclick="switchTab('buscar', this)">🔍 Buscar Tarjetas</div>
+</div>
+
+<div class="main">
+
+  <!-- LOGIN SCREEN -->
+  <div id="loginScreen" class="login-screen">
+    <div style="font-size:48px">☁️</div>
+    <h2>Base de datos en la nube</h2>
+    <p>Conecta tu cuenta de Google para guardar los datos de los agentes en Drive. Los datos persisten aunque pierdas el archivo .html.</p>
+    <button class="btn-login-big" onclick="signIn()">
+      <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.2l6.7-6.7C35.7 2.5 30.2 0 24 0 14.7 0 6.7 5.5 2.7 13.5l7.8 6C12.5 13 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8C43.8 37.3 46.5 31.4 46.5 24.5z"/><path fill="#FBBC05" d="M10.5 28.5A14.4 14.4 0 019.5 24c0-1.6.3-3.1.7-4.5l-7.8-6A23.9 23.9 0 000 24c0 3.9.9 7.5 2.7 10.7l7.8-6.2z"/><path fill="#34A853" d="M24 48c6.2 0 11.4-2 15.2-5.5l-7.5-5.8c-2 1.4-4.6 2.2-7.7 2.2-6.2 0-11.5-4.2-13.4-9.9l-7.8 6C6.7 42.5 14.7 48 24 48z"/></svg>
+      Iniciar sesión con Google
+    </button>
+    <p style="font-size:11px;color:var(--text-muted)">Se crea un archivo <code style="background:var(--surface2);padding:2px 6px;border-radius:4px;font-family:var(--font-mono)">agentes_callcenter.json</code> en tu Google Drive.</p>
+  </div>
+
+  <!-- APP -->
+  <div id="appContent" style="display:none">
+
+    <!-- PANEL: BASE DE DATOS -->
+    <div class="panel active" id="panel-db">
+      <div class="section-title">Agregar Agente</div>
+      <div class="add-mode-toggle">
+        <button class="mode-btn active" onclick="setMode('single', this)">✏️ Uno por uno</button>
+        <button class="mode-btn" onclick="setMode('bulk', this)">📥 Carga masiva</button>
+      </div>
+      <div id="mode-single">
+        <div class="add-form">
+          <div class="field"><label>Apellidos</label><input type="text" id="inputApellidos" placeholder="Ej: García López"/></div>
+          <div class="field"><label>Nombres</label><input type="text" id="inputNombres" placeholder="Ej: Juan Carlos"/></div>
+          <div class="field"><label>Número de Tarjeta</label><input type="text" id="inputTarjeta" placeholder="Ej: 4532-XXXX-1234"/></div>
+          <button class="btn btn-primary" id="btnAddSingle" onclick="addAgent()">+ Agregar</button>
+        </div>
+      </div>
+      <div id="mode-bulk" style="display:none">
+        <div class="bulk-box">
+          <div class="bulk-hint">Una línea por agente: <code>Apellidos, Nombres, Tarjeta</code> — separados por coma, punto y coma o tabulación.<br>Ejemplo: <code>García López, Juan Carlos, 4532-0001-1234</code></div>
+          <div class="bulk-grid">
+            <textarea id="bulkText" rows="8" placeholder="García López, Juan Carlos, 4532-0001-1234&#10;Martínez Perez, Andrea Sofia, 4532-0002-5678&#10;Torres Gomez, Carlos Andres, 4532-0003-9012"></textarea>
+            <button class="btn btn-primary" style="height:fit-content;margin-top:2px" id="btnImportBulk" onclick="importBulk()">⬆ Importar</button>
+          </div>
+          <div id="bulkResult"></div>
+        </div>
+      </div>
+      <div class="section-title">Agentes Registrados</div>
+      <div class="search-bar"><input type="text" id="searchInput" placeholder="Buscar por nombre o tarjeta..." oninput="renderTable()"/></div>
+      <div class="table-wrap">
+        <table><thead><tr><th>#</th><th>Apellidos</th><th>Nombres</th><th>Tarjeta</th><th>Acciones</th></tr></thead>
+        <tbody id="agentTableBody"></tbody></table>
+      </div>
+    </div>
+
+    <!-- PANEL: BUSCAR -->
+    <div class="panel" id="panel-buscar">
+      <div class="search-panel-grid">
+        <div class="query-box">
+          <h3>Pega el listado aquí</h3>
+          <textarea id="queryText" rows="10" placeholder="Pega los nombres como te lleguen:&#10;&#10;Juan García López&#10;López Martínez, Andrea&#10;CARLOS ANDRES TORRES&#10;torres valderrama juan sebastian"></textarea>
+          <div class="query-actions">
+            <button class="btn btn-primary" onclick="buscarTarjetas()">🔍 Buscar</button>
+            <button class="btn btn-secondary" onclick="clearQuery()">Limpiar</button>
+          </div>
+        </div>
+        <div class="results-box">
+          <h3>Resultados</h3>
+          <div id="resultsContainer"><div class="empty-results">Los resultados aparecerán aquí</div></div>
+          <div id="previewBtnWrap" style="display:none">
+            <button class="btn-preview" onclick="openModal()">👁 Previsualizar Reporte (<span id="previewCount">0</span>)</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <div class="modal-header"><h2>REPORTE DE AGENTES</h2><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-date" id="modalDate"></div>
+    <table class="report-table">
+      <thead><tr><th>#</th><th>Apellidos</th><th>Nombres</th><th>Tarjeta</th><th></th></tr></thead>
+      <tbody id="reportTableBody"></tbody>
+    </table>
+    <div class="modal-footer">
+      <div class="modal-total">Total: <span id="reportTotal">0</span> agentes</div>
+      <button class="btn btn-danger" onclick="clearReport()">Limpiar reporte</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Google Identity Services -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+
+<script>
+// ============================
+// CONFIG — Reemplaza con tu Client ID de Google Cloud Console
+// Instrucciones al final del script
+// ============================
+const CLIENT_ID = localStorage.getItem('gapi_client_id') || '';
+const SCOPES = 'https://www.googleapis.com/auth/drive.file';
+const FILE_NAME = 'agentes_callcenter.json';
+
+let accessToken = null;
+let driveFileId = localStorage.getItem('drive_file_id') || null;
+let agents = [];
+let report = JSON.parse(localStorage.getItem('callcenter_report_v1') || '[]');
+let lastResults = [];
+let saveTimeout = null;
+
+// ============================
+// SYNC STATUS
+// ============================
+function setSyncStatus(state, label) {
+  const dot = document.getElementById('syncDot');
+  const lbl = document.getElementById('syncLabel');
+  dot.className = 'sync-dot ' + state;
+  lbl.textContent = label;
+}
+
+// ============================
+// TOAST
+// ============================
+function showToast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (type ? ' '+type : '');
+  setTimeout(() => t.className = 'toast', 3000);
+}
+
+// ============================
+// AUTH
+// ============================
+function signIn() {
+  // Si no hay Client ID configurado, mostrar instrucciones
+  const stored = localStorage.getItem('gapi_client_id');
+  if (!stored) {
+    const id = prompt(
+      '🔑 Ingresa tu Google OAuth Client ID:\n\n' +
+      'Para obtenerlo:\n' +
+      '1. Ve a console.cloud.google.com\n' +
+      '2. Crea un proyecto nuevo\n' +
+      '3. Habilita "Google Drive API"\n' +
+      '4. En "Credenciales" → "Crear credencial" → "ID de cliente OAuth"\n' +
+      '5. Tipo: Aplicación web\n' +
+      '6. En "Orígenes autorizados" agrega el origen desde donde abres este archivo\n' +
+      '7. Copia el Client ID aquí:'
+    );
+    if (!id || !id.includes('.apps.googleusercontent.com')) {
+      showToast('Client ID inválido', 'err'); return;
+    }
+    localStorage.setItem('gapi_client_id', id);
+    location.reload();
+    return;
+  }
+
+  const client = google.accounts.oauth2.initTokenClient({
+    client_id: stored,
+    scope: SCOPES,
+    callback: (resp) => {
+      if (resp.error) { showToast('Error al autenticar: ' + resp.error, 'err'); return; }
+      accessToken = resp.access_token;
+      onSignedIn();
+    }
+  });
+  client.requestAccessToken();
+}
+
+function signOut() {
+  accessToken = null;
+  agents = []; report = [];
+  localStorage.removeItem('drive_file_id');
+  driveFileId = null;
+  showAuthUI(false);
+  setSyncStatus('', 'Sin conexión');
+  showToast('Sesión cerrada');
+}
+
+function onSignedIn() {
+  showAuthUI(true);
+  setSyncStatus('syncing', 'Cargando...');
+  loadFromDrive();
+}
+
+function showAuthUI(loggedIn) {
+  document.getElementById('loginScreen').style.display  = loggedIn ? 'none' : '';
+  document.getElementById('appContent').style.display   = loggedIn ? '' : 'none';
+  document.getElementById('appTabs').style.display      = loggedIn ? '' : 'none';
+  document.getElementById('btnLogin').style.display     = loggedIn ? 'none' : '';
+  document.getElementById('btnLogout').style.display    = loggedIn ? '' : 'none';
+  document.getElementById('agentCount').style.display   = loggedIn ? '' : 'none';
+}
+
+// ============================
+// DRIVE API
+// ============================
+async function driveRequest(url, options = {}) {
+  const res = await fetch(url, {
+    ...options,
+    headers: { 'Authorization': 'Bearer ' + accessToken, ...(options.headers || {}) }
+  });
+  if (!res.ok) throw new Error(`Drive error ${res.status}: ${await res.text()}`);
+  return res;
+}
+
+async function findOrCreateFile() {
+  // Buscar archivo existente
+  const searchRes = await driveRequest(
+    `https://www.googleapis.com/drive/v3/files?q=name='${FILE_NAME}' and trashed=false&fields=files(id,name)`
+  );
+  const data = await searchRes.json();
+  if (data.files && data.files.length > 0) {
+    driveFileId = data.files[0].id;
+    localStorage.setItem('drive_file_id', driveFileId);
+    return driveFileId;
+  }
+  // Crear archivo nuevo
+  const meta = JSON.stringify({ name: FILE_NAME, mimeType: 'application/json' });
+  const content = JSON.stringify([]);
+  const boundary = '-------boundary_callcenter';
+  const body = `--${boundary}\r\nContent-Type: application/json\r\n\r\n${meta}\r\n--${boundary}\r\nContent-Type: application/json\r\n\r\n${content}\r\n--${boundary}--`;
+  const createRes = await driveRequest(
+    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',
+    { method: 'POST', headers: { 'Content-Type': `multipart/related; boundary=${boundary}` }, body }
+  );
+  const created = await createRes.json();
+  driveFileId = created.id;
+  localStorage.setItem('drive_file_id', driveFileId);
+  return driveFileId;
+}
+
+async function loadFromDrive() {
+  try {
+    await findOrCreateFile();
+    const res = await driveRequest(
+      `https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media`
+    );
+    const text = await res.text();
+    agents = text ? JSON.parse(text) : [];
+    renderTable(); updateCount();
+    setSyncStatus('ok', 'Sincronizado');
+    showToast('✓ Datos cargados desde Drive');
+  } catch(e) {
+    setSyncStatus('error', 'Error de sync');
+    showToast('Error cargando Drive: ' + e.message, 'err');
+    console.error(e);
+  }
+}
+
+async function saveToDrive() {
+  if (!accessToken || !driveFileId) return;
+  setSyncStatus('syncing', 'Guardando...');
+  try {
+    await driveRequest(
+      `https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=media`,
+      { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(agents) }
+    );
+    setSyncStatus('ok', 'Sincronizado');
+  } catch(e) {
+    setSyncStatus('error', 'Error al guardar');
+    showToast('Error guardando: ' + e.message, 'err');
+  }
+}
+
+function scheduleSave() {
+  clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(saveToDrive, 800);
+}
+
+// ============================
+// TABS / MODES
+// ============================
+function switchTab(tab, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('panel-' + tab).classList.add('active');
+}
+
+function setMode(mode, el) {
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('mode-single').style.display = mode==='single' ? '' : 'none';
+  document.getElementById('mode-bulk').style.display   = mode==='bulk'   ? '' : 'none';
+}
+
+// ============================
+// CRUD
+// ============================
+function addAgent() {
+  const apellidos = document.getElementById('inputApellidos').value.trim();
+  const nombres   = document.getElementById('inputNombres').value.trim();
+  const tarjeta   = document.getElementById('inputTarjeta').value.trim();
+  if (!apellidos || !nombres || !tarjeta) { showToast('⚠ Completa todos los campos', 'warn'); return; }
+  agents.push({ id: Date.now(), apellidos, nombres, tarjeta });
+  ['inputApellidos','inputNombres','inputTarjeta'].forEach(id => document.getElementById(id).value='');
+  renderTable(); updateCount(); scheduleSave();
+  showToast('✓ Agente agregado');
+}
+
+function importBulk() {
+  const lines = document.getElementById('bulkText').value.split('\n').map(l=>l.trim()).filter(Boolean);
+  if (!lines.length) { showToast('⚠ El listado está vacío', 'warn'); return; }
+  let added=0, skipped=0, errors=[];
+  for (const line of lines) {
+    const parts = line.split(/[,;\t]/).map(p=>p.trim()).filter(Boolean);
+    if (parts.length < 3) { errors.push(line); continue; }
+    const [apellidos, nombres, tarjeta] = parts;
+    if (agents.some(a=>a.tarjeta===tarjeta)) { skipped++; continue; }
+    agents.push({ id: Date.now()+added, apellidos, nombres, tarjeta });
+    added++;
+  }
+  renderTable(); updateCount(); scheduleSave();
+  let html = '<div class="bulk-result">';
+  if (added)         html += `<div class="ok">✓ ${added} agente${added>1?'s':''} importado${added>1?'s':''}</div>`;
+  if (skipped)       html += `<div class="skip">⚠ ${skipped} duplicado${skipped>1?'s':''} omitido${skipped>1?'s':''}</div>`;
+  if (errors.length) html += `<div class="err">✗ ${errors.length} línea${errors.length>1?'s':''} con formato incorrecto</div>`;
+  html += '</div>';
+  document.getElementById('bulkResult').innerHTML = html;
+  if (added) { document.getElementById('bulkText').value=''; showToast(`✓ ${added} agentes importados`); }
+}
+
+function deleteAgent(id) {
+  agents = agents.filter(a=>a.id!==id);
+  report = report.filter(i=>i!==id);
+  saveReport(); renderTable(); updateCount(); scheduleSave(); updateReportUI();
+  showToast('Agente eliminado');
+}
+
+function editAgent(id) {
+  const row   = document.querySelector(`tr[data-id="${id}"]`);
+  const agent = agents.find(a=>a.id===id);
+  row.innerHTML = `
+    <td style="color:var(--text-muted);font-size:12px">${agents.indexOf(agent)+1}</td>
+    <td><input class="edit-input" id="e_ap_${id}" value="${agent.apellidos}"/></td>
+    <td><input class="edit-input" id="e_nm_${id}" value="${agent.nombres}"/></td>
+    <td><input class="edit-input" id="e_tc_${id}" value="${agent.tarjeta}"/></td>
+    <td class="td-actions">
+      <button class="btn btn-primary" style="font-size:12px;padding:6px 14px;" onclick="saveEdit(${id})">Guardar</button>
+      <button class="btn btn-secondary" style="font-size:12px;padding:6px 14px;" onclick="renderTable()">Cancelar</button>
+    </td>`;
+}
+
+function saveEdit(id) {
+  const agent = agents.find(a=>a.id===id);
+  agent.apellidos = document.getElementById(`e_ap_${id}`).value.trim();
+  agent.nombres   = document.getElementById(`e_nm_${id}`).value.trim();
+  agent.tarjeta   = document.getElementById(`e_tc_${id}`).value.trim();
+  renderTable(); scheduleSave();
+  showToast('✓ Cambios guardados');
+}
+
+// ============================
+// RENDER TABLE
+// ============================
+function renderTable() {
+  const q     = document.getElementById('searchInput').value.toLowerCase();
+  const tbody = document.getElementById('agentTableBody');
+  const list  = agents.filter(a=>`${a.apellidos} ${a.nombres} ${a.tarjeta}`.toLowerCase().includes(q));
+  if (!list.length) {
+    tbody.innerHTML = `<tr><td colspan="5" class="no-data">${!agents.length?'No hay agentes registrados aún':'No se encontraron resultados'}</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = list.map((a,i)=>`
+    <tr data-id="${a.id}">
+      <td style="color:var(--text-muted);font-size:12px">${i+1}</td>
+      <td>${a.apellidos}</td><td>${a.nombres}</td>
+      <td class="td-card">${a.tarjeta}</td>
+      <td class="td-actions">
+        <button class="btn btn-edit" onclick="editAgent(${a.id})">Editar</button>
+        <button class="btn btn-danger" onclick="deleteAgent(${a.id})">Eliminar</button>
+      </td>
+    </tr>`).join('');
+}
+
+function updateCount() {
+  document.getElementById('agentCount').textContent = `${agents.length} agente${agents.length!==1?'s':''}`;
+}
+
+// ============================
+// REPORT
+// ============================
+function saveReport() { localStorage.setItem('callcenter_report_v1', JSON.stringify(report)); }
+
+function toggleReport(id) {
+  report.includes(id) ? (report=report.filter(i=>i!==id), showToast('Removido del reporte'))
+                      : (report.push(id), showToast('✓ Añadido al reporte'));
+  saveReport(); updateReportUI(); renderResults();
+}
+
+function updateReportUI() {
+  const n = report.length;
+  document.getElementById('reportBadgeCount').textContent = n;
+  document.getElementById('reportBadge').style.display = n>0?'':'none';
+  document.getElementById('previewCount').textContent   = n;
+  document.getElementById('previewBtnWrap').style.display = n>0?'':'none';
+}
+
+function clearReport() {
+  report=[]; saveReport(); updateReportUI(); closeModal(); renderResults();
+  showToast('Reporte limpiado');
+}
+
+function removeFromReport(id) {
+  report=report.filter(i=>i!==id); saveReport(); updateReportUI(); renderResults(); openModal();
+}
+
+// ============================
+// SEARCH / MATCH
+// ============================
+function normalize(s) { return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9\s]/g,'').trim(); }
+function getTokens(s) { return normalize(s).split(/\s+/).filter(Boolean); }
+function matchScore(qt, agent) {
+  const at = getTokens(`${agent.apellidos} ${agent.nombres}`);
+  return qt.reduce((n,q)=>n+(at.some(a=>a===q||a.startsWith(q)||q.startsWith(a))?1:0),0);
+}
+function findAgent(line) {
+  const tokens = getTokens(line);
+  if (!tokens.length) return null;
+  let best=null, top=0;
+  for (const a of agents) {
+    const s = matchScore(tokens, a);
+    if (s>=(tokens.length===1?1:2) && s>top) { best=a; top=s; }
+  }
+  return best;
+}
+
+function buscarTarjetas() {
+  const lines = document.getElementById('queryText').value.split('\n').map(l=>l.trim()).filter(Boolean);
+  if (!lines.length) { showToast('⚠ Ingresa al menos un nombre','warn'); return; }
+  lastResults = lines.map(line=>({ line, agent: findAgent(line) }));
+  renderResults();
+}
+
+function renderResults() {
+  if (!lastResults.length) return;
+  const found = lastResults.filter(r=>r.agent).length;
+  const html = lastResults.map(({line,agent})=>{
+    if (agent) {
+      const inR = report.includes(agent.id);
+      return `<div class="result-item found">
+        <div style="min-width:0">
+          <div class="result-name">${agent.apellidos}, ${agent.nombres}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${line}</div>
+        </div>
+        <div class="result-right">
+          <div class="result-card">${agent.tarjeta}</div>
+          <button class="btn-add-report ${inR?'added':''}" onclick="toggleReport(${agent.id})">${inR?'✓ Añadido':'+ Reporte'}</button>
+        </div>
+      </div>`;
+    }
+    return `<div class="result-item not-found">
+      <div class="result-name" style="color:var(--text-muted)">${line}</div>
+      <div class="result-not-found-tag">NO ENCONTRADO</div>
+    </div>`;
+  }).join('');
+  document.getElementById('resultsContainer').innerHTML =
+    `<div class="results-summary"><span>${found}</span> encontrados / ${lastResults.length-found} no encontrados — ${lastResults.length} total</div>` + html;
+  updateReportUI();
+}
+
+function clearQuery() {
+  document.getElementById('queryText').value='';
+  document.getElementById('resultsContainer').innerHTML='<div class="empty-results">Los resultados aparecerán aquí</div>';
+  lastResults=[];
+}
+
+// ============================
+// MODAL
+// ============================
+function openModal() {
+  const list = report.map(id=>agents.find(a=>a.id===id)).filter(Boolean);
+  document.getElementById('modalDate').textContent = 'Generado: ' + new Date().toLocaleString('es-CO',{dateStyle:'long',timeStyle:'short'});
+  document.getElementById('reportTotal').textContent = list.length;
+  document.getElementById('reportTableBody').innerHTML = list.length
+    ? list.map((a,i)=>`<tr>
+        <td style="color:var(--text-muted);font-size:12px">${i+1}</td>
+        <td>${a.apellidos}</td><td>${a.nombres}</td>
+        <td class="tc">${a.tarjeta}</td>
+        <td><button class="btn btn-danger" style="font-size:11px;padding:4px 8px;" onclick="removeFromReport(${a.id})">✕</button></td>
+      </tr>`).join('')
+    : `<tr><td colspan="5" style="text-align:center;padding:28px;color:var(--text-muted)">No hay agentes en el reporte</td></tr>`;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); }
+function closeModalOutside(e) { if(e.target===document.getElementById('modalOverlay')) closeModal(); }
+
+// ============================
+// INIT
+// ============================
+document.getElementById('inputTarjeta').addEventListener('keydown', e=>{ if(e.key==='Enter') addAgent(); });
+updateReportUI();
+
+// Auto-login si ya hay token guardado (no persiste entre sesiones por seguridad — requiere click)
+</script>
+</body>
+</html>
