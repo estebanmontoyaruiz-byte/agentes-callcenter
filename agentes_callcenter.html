@@ -203,15 +203,15 @@
         <div class="add-form">
           <div class="field"><label>Apellidos</label><input type="text" id="inputApellidos" placeholder="Ej: García López"/></div>
           <div class="field"><label>Nombres</label><input type="text" id="inputNombres" placeholder="Ej: Juan Carlos"/></div>
-          <div class="field"><label>Número de Tarjeta</label><input type="text" id="inputTarjeta" placeholder="Ej: 4532-XXXX-1234"/></div>
+          <div class="field"><label>Número de Tarjeta</label><input type="text" id="inputTarjeta" placeholder="Ej: 12345"/></div>
           <button class="btn btn-primary" id="btnAddSingle" onclick="addAgent()">+ Agregar</button>
         </div>
       </div>
       <div id="mode-bulk" style="display:none">
         <div class="bulk-box">
-          <div class="bulk-hint">Una línea por agente: <code>Apellidos, Nombres, Tarjeta</code> — separados por coma, punto y coma o tabulación.<br>Ejemplo: <code>García López, Juan Carlos, 4532-0001-1234</code></div>
+          <div class="bulk-hint">Una línea por agente: <code>Apellidos, Nombres, Tarjeta</code> — separados por coma, punto y coma o tabulación.<br>Ejemplo: <code>García López, Juan Carlos, 12345</code></div>
           <div class="bulk-grid">
-            <textarea id="bulkText" rows="8" placeholder="García López, Juan Carlos, 4532-0001-1234&#10;Martínez Perez, Andrea Sofia, 4532-0002-5678&#10;Torres Gomez, Carlos Andres, 4532-0003-9012"></textarea>
+            <textarea id="bulkText" rows="8" placeholder="García López, Juan Carlos, 12345&#10;Martínez Perez, Andrea Sofia, 12345&#10;Torres Gomez, Carlos Andres, 12345"></textarea>
             <button class="btn btn-primary" style="height:fit-content;margin-top:2px" id="btnImportBulk" onclick="importBulk()">⬆ Importar</button>
           </div>
           <div id="bulkResult"></div>
@@ -230,7 +230,7 @@
       <div class="search-panel-grid">
         <div class="query-box">
           <h3>Pega el listado aquí</h3>
-          <textarea id="queryText" rows="10" placeholder="Pega los nombres como te lleguen:&#10;&#10;Juan García López&#10;López Martínez, Andrea&#10;CARLOS ANDRES TORRES&#10;torres valderrama juan sebastian"></textarea>
+          <textarea id="queryText" rows="10" placeholder="Pega los nombres como estén:&#10;&#10;Juan García López&#10;López Martínez, Andrea&#10;CARLOS ANDRES TORRES&#10;torres valderrama juan sebastian"></textarea>
           <div class="query-actions">
             <button class="btn btn-primary" onclick="buscarTarjetas()">🔍 Buscar</button>
             <button class="btn btn-secondary" onclick="clearQuery()">Limpiar</button>
@@ -260,7 +260,7 @@
     </table>
     <div class="modal-footer">
       <div class="modal-total">Total: <span id="reportTotal">0</span> agentes</div>
-      <button class="btn btn-danger" onclick="clearReport()">Limpiar reporte</button>
+      <button class="btn btn-danger" onclick="clearReport()">Limpiar</button>
     </div>
   </div>
 </div>
